@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>채팅방</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      margin: 0;
+    }
+
+    #room-name {
+      text-align: center;
+      background: #f1f1f1;
+      padding: 10px;
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    #chat-box {
+      flex-grow: 1;
+      overflow-y: auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .message-container {
+      display: flex;
+      align-items: flex-end;
+      margin: 5px 0;
+    }
+
+    .message {
+      max-width: 60%;
+      padding: 8px 12px;
+      border-radius: 10px;
+      word-wrap: break-word;
+      position: relative;
+    }
+
+    .my-message {
+      background: #c6edf6;
+      align-self: flex-end;
+    }
+
+    .other-message {
+      background: #dae1e2;
+      border: 1px solid #ddd;
+      align-self: flex-start;
+    }
+
+    .timestamp {
+      font-size: 12px;
+      color: gray;
+      margin: 0 5px;
+      white-space: nowrap;
+    }
+
+    .my-container {
+      justify-content: flex-end;
+    }
+
+    .other-container {
+      justify-content: flex-start;
+    }
+
+    #message-input {
+      display: flex;
+      padding: 10px;
+      background: #f9f9f9;
+      border-top: 1px solid #ddd;
+      align-items: center;
+    }
+
+    #message {
+      flex-grow: 1;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      outline: none;
+    }
+
+    button {
+      margin-left: 10px;
+      padding: 10px;
+      border: none;
+      background: #007bff;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    /* 사진 업로드 버튼 */
+    #upload-container {
+      display: flex;
+      justify-content: left;
+      padding: 2px;
+      background: #f9f9f9;
+    }
+
+    #image-button {
+      width: 100%;
+      padding: 2px;
+      font-size: 10px;
+      background: #eaeaea;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    #image-button:hover {
+      background: #d9d9d9;
+    }
+
+    /* 파일 입력 숨김 */
+    #image-input {
+      display: none;
+    }
+
+    /* 이미지 메시지 스타일 */
+    .message img {
+      max-width: 200px;
+      border-radius: 10px;
+    }
+
+  </style>
+</head>
+<body>
+
+<h2 id="room-name">채팅방</h2>
+
+<div id="chat-box"></div>
+
+<!-- 메시지 입력창 -->
+<div id="message-input">
+  <input type="text" id="message" placeholder="메시지를 입력하세요" onkeypress="if(event.keyCode==13) sendMessage();">
+  <button onclick="sendMessage()">전송</button>
+</div>
+
+<!-- 📂 사진 업로드 버튼 -->
+<div id="upload-container">
+  <label for="image-input" id="image-button">📷</label>
+  <input type="file" id="image-input" accept="image/*" onchange="uploadImage()">
+</div>
+
+<script>
+  let socket;
+  let roomId;
+  let roomName;
+  let nickname = "익명"; // 기본 닉네임 설정
+
+  function getRoomId() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("roomId");
+  }
+
+  function joinRoom() {
+    roomId = getRoomId();
+    if (!roomId) {
+      alert("잘못된 접근입니다.");
+      window.location.href = "chat.html";
+      return;
+    }
+
+    //나중에 roomId 알아낸 걸로 쿼리문 조인해서 roomname 가져오는 거 추가
+
+    document.getElementById("room-name").innerText = "채팅방: " + roomId;
+
+    socket = new WebSocket("ws://localhost:3000");
+
+    socket.onopen = () => {
+      console.log("서버에 연결됨");
+      socket.send(JSON.stringify({ type: "join", roomId: roomId }));
+    };
+
+    socket.onmessage = (event) => {
+      let data = JSON.parse(event.data);
+      console.log("[Data Receive]")
+      console.log("sender : " + data.sender);
+      console.log("type : " + data.type);
+      let type = data.type;
+      if (type === "image") {
+        displayImage(data.sender, data.message, false);
+      } else {
+        displayMessage(data.sender, data.message, false);
+      }
+    };
+  }
+
+  function sendMessage() {
+    let message = document.getElementById("message").value;
+    if (!message || !socket) return;
+
+    displayMessage(nickname, message, true);
+
+    socket.send(JSON.stringify({
+      type: "message",
+      roomId: roomId,
+      sender: nickname,
+      message: message
+    }));
+
+    document.getElementById("message").value = "";
+  }
+
+  function displayMessage(sender, message, isMine) {
+    let chatBox = document.getElementById("chat-box");
+
+    let containerDiv = document.createElement("div");
+    containerDiv.classList.add("message-container", isMine ? "my-container" : "other-container");
+
+    let messageDiv = document.createElement("div");
+    messageDiv.classList.add("message", isMine ? "my-message" : "other-message");
+    messageDiv.innerHTML = `<strong>${sender}</strong><br>${message}`;
+
+    let date = new Date();
+    let timeString = `${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+    let timeSpan = document.createElement("span");
+    timeSpan.classList.add("timestamp");
+    timeSpan.innerText = timeString;
+
+    if (isMine) {
+      containerDiv.appendChild(timeSpan);
+      containerDiv.appendChild(messageDiv);
+    } else {
+      containerDiv.appendChild(messageDiv);
+      containerDiv.appendChild(timeSpan);
+    }
+
+    chatBox.appendChild(containerDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  function uploadImage() {
+    let file = document.getElementById("image-input").files[0];
+    if (!file) return;
+
+    let reader = new FileReader();
+    reader.onload = function(event) {
+      let imageData = event.target.result;
+      displayImage(nickname, imageData, true);
+
+      socket.send(JSON.stringify({
+        type: "image",
+        roomId: roomId,
+        sender: nickname,
+        message: imageData
+      }));
+    };
+
+    reader.readAsDataURL(file);
+  }
+
+  function displayImage(sender, imageData, isMine) {
+    console.log("imageData: " + imageData);
+    console.log("\n sender: " + sender);
+    let chatBox = document.getElementById("chat-box");
+
+    let containerDiv = document.createElement("div");
+    containerDiv.classList.add("message-container", isMine ? "my-container" : "other-container");
+
+    let messageDiv = document.createElement("div");
+    messageDiv.classList.add("message", isMine ? "my-message" : "other-message");
+    messageDiv.innerHTML = `<strong>${sender}</strong><br><img src="${imageData}" alt="첨부 이미지">`;
+
+    //let timeSpan = document.createElement("span");
+    //timeSpan.classList.add("timestamp");
+    //timeSpan.innerText = new Date().toLocaleTimeString();
+
+    let date = new Date();
+    let timeString = `${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+    let timeSpan = document.createElement("span");
+    timeSpan.classList.add("timestamp");
+    timeSpan.innerText = timeString;
+
+    if (isMine) {
+      containerDiv.appendChild(timeSpan);
+      containerDiv.appendChild(messageDiv);
+    } else {
+      containerDiv.appendChild(messageDiv);
+      containerDiv.appendChild(timeSpan);
+    }
+
+    chatBox.appendChild(containerDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  joinRoom();
+</script>
+
+</body>
+</html>

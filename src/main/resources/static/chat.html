@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>채팅방 목록</title>
+    <style>
+        /* 전체 페이지 스타일 */
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #f0f8ff;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        /* 컨테이너 스타일 */
+        .container {
+            width: 100%;
+            max-width: 400px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        /* 헤더 스타일 */
+        .header {
+            background: #87CEFA;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        /* 채팅방 목록 스타일 */
+        .room-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .room-list li {
+            padding: 15px;
+            border-bottom: 1px solid #ddd;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .room-list li a {
+            text-decoration: none;
+            color: #333;
+            font-size: 18px;
+            font-weight: bold;
+            display: block;
+        }
+
+        .room-list li:hover {
+            background: #f0f8ff;
+        }
+
+        /* 채팅방 생성 버튼 */
+        .create-btn {
+            width: 100%;
+            padding: 15px;
+            background: #87CEFA;
+            color: white;
+            font-size: 18px;
+            border: none;
+            border-radius: 0 0 15px 15px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .create-btn:hover {
+            background: #4682B4;
+        }
+
+        /* 모달 스타일 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .modal input {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .modal button {
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: #87CEFA;
+            border: none;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .modal button:hover {
+            background: #4682B4;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">채팅방 목록</div>
+    <ul id="room-list" class="room-list"></ul>
+    <button class="create-btn" onclick="showModal()">+ 채팅방 생성</button>
+</div>
+
+<!-- 채팅방 생성 모달 -->
+<div id="roomModal" class="modal">
+    <h3>새 채팅방 만들기</h3>
+    <input type="text" id="roomName" placeholder="채팅방 이름을 입력하세요"  onkeypress="if(event.keyCode==13) createRoom();"/>
+    <button onclick="createRoom()">생성</button>
+</div>
+
+<script>
+    // 채팅방 목록 불러오기
+    function loadRooms() {
+        fetch('/chat/rooms')
+            .then(response => response.json())
+            .then(rooms => {
+                let roomList = document.getElementById("room-list");
+                roomList.innerHTML = "";
+                rooms.forEach(room => {
+                    console.log("Id: " + room.id + "\n");
+                    console.log("name: " + room.name + "\n");
+                    console.log("date: " + room.creationDate + "\n");
+                    let li = document.createElement("li");
+                    li.innerHTML = `
+                        <a href="chatRoom.html?roomId=${room.id}" style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>${room.name}</span>
+                            <span style="color: gray; font-weight: normal; font-size: 14px;">${room.creationDate}</span>
+                        </a>
+                    `;
+                    roomList.appendChild(li);
+                });
+            });
+    }
+
+    // 채팅방 생성
+    function createRoom() {
+        let roomName = document.getElementById("roomName").value;
+        if (!roomName) {
+            alert("채팅방 이름을 입력하세요.");
+            return;
+        }
+
+        fetch(`/chat/rooms?name=${encodeURIComponent(roomName)}`, { method: "POST" })
+            .then(response => response.text())
+            .then(roomId => {
+                console.log("채팅방 생성됨:", roomId);
+                closeModal();
+                loadRooms();
+            });
+    }
+
+    // 모달 창 열기
+    function showModal() {
+        document.getElementById('roomModal').style.display = 'block';
+    }
+
+    // 모달 창 닫기
+    function closeModal() {
+        document.getElementById('roomModal').style.display = 'none';
+        document.getElementById("roomName").value = '';
+    }
+
+    loadRooms();
+</script>
+
+</body>
+</html>
