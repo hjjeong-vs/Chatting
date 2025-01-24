@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>채팅 페이지</title>
+  <style>
+    /* 전체 레이아웃 스타일 */
+    body {
+      display: flex;
+      height: 100vh;
+      margin: 0;
+      background-color: #f0f8ff;
+    }
+
+    /* 왼쪽 영역 (다른 콘텐츠) */
+    #main-content {
+      flex: 1; /* 나머지 70% */
+      background: #ffffff;
+      padding: 10px;
+    }
+
+    /* 오른쪽 영역 (chat.html) */
+    #chat-container {
+      width: 30%;
+      background: #ffffff;
+      border-left: 2px solid #ddd;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      transition: width 0.3s;
+      overflow: hidden;
+    }
+
+    /* 접었을 때의 스타일 */
+    #chat-container.collapsed {
+      width: 0;
+    }
+
+    /* 버튼 스타일 */
+    #toggle-button {
+      position: absolute;
+      top: 20px;
+      left: 70%; /* 오른쪽 영역에 맞게 버튼 위치 */
+      background: #87CEFA;
+      color: white;
+      border: none;
+      font-size: 18px;
+      padding: 10px;
+      cursor: pointer;
+      border-radius: 5px;
+      transition: left 0.3s;
+    }
+
+    #toggle-button.collapsed {
+      left: 100%;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+  </style>
+</head>
+<body>
+
+<!-- 왼쪽 콘텐츠 영역 -->
+<div id="main-content">
+  <h1>메인 콘텐츠</h1>
+  <p>여기에는 다른 콘텐츠를 배치할 수 있습니다.</p>
+  <!-- 추가적인 내용은 여기에 삽입 -->
+</div>
+
+<!-- 오른쪽 채팅방 영역 -->
+<div id="chat-container">
+  <h2>채팅방</h2>
+  <!-- chat.html을 iframe으로 표시 -->
+  <iframe src="chat.html" id="chat-frame"></iframe>
+</div>
+
+<!-- 접기/펼치기 버튼 -->
+<button id="toggle-button" onclick="toggleChatContainer()">▼</button>
+
+<script>
+  function toggleChatContainer() {
+    const chatContainer = document.getElementById("chat-container");
+    const toggleButton = document.getElementById("toggle-button");
+
+    // chat-container의 클래스를 토글
+    chatContainer.classList.toggle("collapsed");
+
+    // 버튼 텍스트 변경
+    if (chatContainer.classList.contains("collapsed")) {
+      toggleButton.innerText = "►";
+    } else {
+      toggleButton.innerText = "▼";
+    }
+  }
+</script>
+
+</body>
+</html>
