@@ -8,8 +8,8 @@ public class WwwApplication {
 
 	public static void main(String[] args) {
 
-		//SpringApplication.run(WwwApplication.class, args);
-		SpringApplication.run(com.KoreaItAcademy.chat.ChatApplication.class, args);
+		SpringApplication.run(WwwApplication.class, args);
+		//SpringApplication.run(com.KoreaItAcademy.chat.ChatApplication.class, args);
 
 	}
 

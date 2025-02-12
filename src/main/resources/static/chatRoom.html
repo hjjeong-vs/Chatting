@@ -6,16 +6,18 @@
   <style>
     body {
       font-family: Arial, sans-serif;
+      background: #f9f9f9;
+      margin: 0;
       display: flex;
       flex-direction: column;
       height: 100vh;
-      margin: 0;
     }
 
     #room-name {
       text-align: center;
-      background: #f1f1f1;
-      padding: 10px;
+      background: #007bff;
+      color: white;
+      padding: 15px;
       font-size: 18px;
       font-weight: bold;
     }
@@ -30,27 +32,40 @@
 
     .message-container {
       display: flex;
-      align-items: flex-end;
+      align-items: center;
       margin: 5px 0;
+      max-width: 80%;
     }
 
     .message {
-      max-width: 60%;
-      padding: 8px 12px;
+      padding: 10px;
       border-radius: 10px;
       word-wrap: break-word;
       position: relative;
+      font-size: 14px;
+      display: inline-block;
+      max-width: 60%;
+    }
+
+    .my-container {
+      justify-content: flex-end;
+      align-self: flex-end;
+      text-align: right;
+    }
+
+    .other-container {
+      justify-content: flex-start;
+      align-self: flex-start;
+      text-align: left;
     }
 
     .my-message {
-      background: #c6edf6;
-      align-self: flex-end;
+      background: #dcf8c6;
     }
 
     .other-message {
-      background: #dae1e2;
+      background: #fff;
       border: 1px solid #ddd;
-      align-self: flex-start;
     }
 
     .timestamp {
@@ -60,18 +75,10 @@
       white-space: nowrap;
     }
 
-    .my-container {
-      justify-content: flex-end;
-    }
-
-    .other-container {
-      justify-content: flex-start;
-    }
-
     #message-input {
       display: flex;
       padding: 10px;
-      background: #f9f9f9;
+      background: #fff;
       border-top: 1px solid #ddd;
       align-items: center;
     }
@@ -87,49 +94,15 @@
     button {
       margin-left: 10px;
       padding: 10px;
-      border: none;
       background: #007bff;
       color: white;
+      border: none;
       border-radius: 5px;
       cursor: pointer;
     }
 
     button:hover {
       background: #0056b3;
-    }
-
-    /* 사진 업로드 버튼 */
-    #upload-container {
-      display: flex;
-      justify-content: left;
-      padding: 2px;
-      background: #f9f9f9;
-    }
-
-    #image-button {
-      width: 10%;
-      padding: 2px;
-      font-size: 10px;
-      background: #eaeaea;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      cursor: pointer;
-      text-align: center;
-    }
-
-    #image-button:hover {
-      background: #d9d9d9;
-    }
-
-    /* 파일 입력 숨김 */
-    #image-input {
-      display: none;
-    }
-
-    /* 이미지 메시지 스타일 */
-    .message img {
-      max-width: 200px;
-      border-radius: 10px;
     }
 
   </style>
@@ -140,58 +113,103 @@
 
 <div id="chat-box"></div>
 
-<!-- 메시지 입력창 -->
 <div id="message-input">
   <input type="text" id="message" placeholder="메시지를 입력하세요" onkeypress="if(event.keyCode==13) sendMessage();">
   <button onclick="sendMessage()">전송</button>
 </div>
 
-<!-- 📂 사진 업로드 버튼 -->
-<div id="upload-container">
-  <label for="image-input" id="image-button">📷</label>
-  <input type="file" id="image-input" accept="image/*" onchange="uploadImage()">
-</div>
-
 <script>
   let socket;
   let roomId;
-  let roomName;
   let nickname = "익명"; // 기본 닉네임 설정
+  let roomName;
 
   function getRoomId() {
     const params = new URLSearchParams(window.location.search);
     return params.get("roomId");
   }
 
-  function joinRoom() {
+  async function loadChatHistory() {
+    try {
+      let response = await fetch(`http://localhost:8080/chat/messages/${roomId}`);
+      if (!response.ok) {
+        console.warn("⚠️ 과거 채팅 내역이 없습니다.");
+        return;
+      }
+
+      // 응답이 비어 있다면 JSON 변환 시도하지 않음
+      let text = await response.text();
+      if (!text) {
+        console.warn("⚠️ 과거 채팅 내역이 없습니다.");
+        return;
+      }
+
+      let messages = JSON.parse(text); // 직접 JSON 변환
+      console.log("📜 [DB에서 가져온 채팅 내역]:", messages);
+
+      messages.forEach(msg => {
+        displayMessage(msg.sender, msg.message, msg.sender == nickname, formatTime(msg.sendTime));
+      });
+
+
+    } catch (error) {
+      console.error("🔴 채팅 내역 불러오기 오류:", error);
+    }
+  }
+  async function fetchRoomName() {
+    try {
+      let response = await fetch(`http://localhost:8080/chat/room/${roomId}`);
+      if (!response.ok) {
+        throw new Error("Room name not found");
+      }
+
+      roomName = await response.text();
+      console.log("📌 [채팅방 이름]:", roomName);
+      document.getElementById("room-name").innerText = `채팅방: ${roomName}`;
+    } catch (error) {
+      console.error("🔴 채팅방 이름 불러오기 오류:", error);
+      document.getElementById("room-name").innerText = "채팅방: 알 수 없음";
+    }
+  }
+
+  async function joinRoom() {
     roomId = getRoomId();
     if (!roomId) {
       alert("잘못된 접근입니다.");
       window.location.href = "chat.html";
       return;
     }
+    await fetchRoomName();
 
-    //나중에 roomId 알아낸 걸로 쿼리문 조인해서 roomname 가져오는 거 추가
 
-    document.getElementById("room-name").innerText = "채팅방: " + roomId;
-
+    // ✅ WebSocket 연결
     socket = new WebSocket("ws://localhost:3000");
 
     socket.onopen = () => {
-      console.log("서버에 연결됨");
+      console.log("🔵 서버에 WebSocket 연결됨!");
       socket.send(JSON.stringify({ type: "join", roomId: roomId }));
     };
 
     socket.onmessage = (event) => {
       let data = JSON.parse(event.data);
-      console.log("[Data Receive]")
-      console.log("sender : " + data.sender);
-      console.log("type : " + data.type);
-      let type = data.type;
-      if (type === "image") {
-        displayImage(data.sender, data.message, false);
-      } else {
-        displayMessage(data.sender, data.message, false);
+      console.log("📩 [받은 메시지]", data);
+
+      if (data.type === "nickname") {
+        nickname = data.nickname;
+        console.log(`👤 내 닉네임: ${nickname}`);
+      }
+
+      if (data.type === "history") {
+        // ✅ 과거 채팅 내역 불러오기 (Spring Boot DB에서 직접 가져옴)
+        loadChatHistory();
+        //console.log("📜 과거 채팅 내역 로드, 메시지 개수:", data.messages.length);
+        //data.messages.forEach(msg => {
+        //  displayMessage(msg.sender, msg.message, msg.sender == nickname, formatTime(msg.sendTime));
+        //});
+      }
+
+      if (data.type === "chat") {
+        displayMessage(data.sender, data.message, data.sender == nickname, formatTime(data.time));
       }
     };
   }
@@ -200,19 +218,37 @@
     let message = document.getElementById("message").value;
     if (!message || !socket) return;
 
-    displayMessage(nickname, message, true);
+    let currentTime = new Date().toISOString(); // ✅ ISO 8601 형식으로 시간 저장
 
-    socket.send(JSON.stringify({
-      type: "message",
+    let messageData = {
+      type: "chat",
       roomId: roomId,
-      sender: nickname,
-      message: message
-    }));
+      sender: nickname, // 🔥 예제에서는 1로 설정했지만, 실제 사용자 ID를 동적으로 가져와야 함.
+      message: message,
+      time: currentTime
+    };
+
+    // 🔥 WebSocket을 통해 서버에 메시지 전송
+    socket.send(JSON.stringify(messageData));
+
+    // 🔥 Spring Boot API를 통해 DB에도 메시지 저장 요청 보내기
+    fetch("http://localhost:8080/chat/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: `roomId=${roomId}&sender=${messageData.sender}&message=${encodeURIComponent(message)}`
+    })
+            .then(response => response.text())
+            .then(result => console.log("✅ [Spring API 응답]:", result))
+            .catch(error => console.error("❌ [Spring API 에러]:", error));
 
     document.getElementById("message").value = "";
   }
 
-  function displayMessage(sender, message, isMine) {
+  function displayMessage(sender, message, isMine, time) {
+    console.log(`📩 [displayMessage 호출됨] sender: ${sender}, message: ${message}, time: ${time}`);
+
     let chatBox = document.getElementById("chat-box");
 
     let containerDiv = document.createElement("div");
@@ -222,11 +258,9 @@
     messageDiv.classList.add("message", isMine ? "my-message" : "other-message");
     messageDiv.innerHTML = `<strong>${sender}</strong><br>${message}`;
 
-    let date = new Date();
-    let timeString = `${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
     let timeSpan = document.createElement("span");
     timeSpan.classList.add("timestamp");
-    timeSpan.innerText = timeString;
+    timeSpan.innerText = time;
 
     if (isMine) {
       containerDiv.appendChild(timeSpan);
@@ -240,58 +274,14 @@
     chatBox.scrollTop = chatBox.scrollHeight;
   }
 
-  function uploadImage() {
-    let file = document.getElementById("image-input").files[0];
-    if (!file) return;
-
-    let reader = new FileReader();
-    reader.onload = function(event) {
-      let imageData = event.target.result;
-      displayImage(nickname, imageData, true);
-
-      socket.send(JSON.stringify({
-        type: "image",
-        roomId: roomId,
-        sender: nickname,
-        message: imageData
-      }));
-    };
-
-    reader.readAsDataURL(file);
-  }
-
-  function displayImage(sender, imageData, isMine) {
-    console.log("imageData: " + imageData);
-    console.log("\n sender: " + sender);
-    let chatBox = document.getElementById("chat-box");
-
-    let containerDiv = document.createElement("div");
-    containerDiv.classList.add("message-container", isMine ? "my-container" : "other-container");
-
-    let messageDiv = document.createElement("div");
-    messageDiv.classList.add("message", isMine ? "my-message" : "other-message");
-    messageDiv.innerHTML = `<strong>${sender}</strong><br><img src="${imageData}" alt="첨부 이미지">`;
-
-    //let timeSpan = document.createElement("span");
-    //timeSpan.classList.add("timestamp");
-    //timeSpan.innerText = new Date().toLocaleTimeString();
-
-    let date = new Date();
-    let timeString = `${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
-    let timeSpan = document.createElement("span");
-    timeSpan.classList.add("timestamp");
-    timeSpan.innerText = timeString;
-
-    if (isMine) {
-      containerDiv.appendChild(timeSpan);
-      containerDiv.appendChild(messageDiv);
-    } else {
-      containerDiv.appendChild(messageDiv);
-      containerDiv.appendChild(timeSpan);
-    }
-
-    chatBox.appendChild(containerDiv);
-    chatBox.scrollTop = chatBox.scrollHeight;
+  // ✅ 날짜 포맷 함수 추가 (ISO 8601 -> 한국 시간 형식)
+  function formatTime(dateTime) {
+    let date = new Date(dateTime);
+    let hours = date.getHours();
+    let minutes = date.getMinutes().toString().padStart(2, '0');
+    let period = hours >= 12 ? "오후" : "오전";
+    hours = hours % 12 || 12;
+    return `${period} ${hours}:${minutes}`;
   }
 
   joinRoom();
