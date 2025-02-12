@@ -22,6 +22,28 @@
       font-weight: bold;
     }
 
+    .return-button {
+      position: absolute;
+      top: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 20px;
+      background: #4c56ad;
+      color: #e8eaff;
+      font-size: 14px;
+      font-weight: bold;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+      transition: background 0.3s ease;
+    }
+
+    .return-button:hover {
+      background: #a1aaff;
+    }
+
+
     #chat-box {
       flex-grow: 1;
       overflow-y: auto;
@@ -60,7 +82,7 @@
     }
 
     .my-message {
-      background: #dcf8c6;
+      background: #a8deff;
     }
 
     .other-message {
@@ -110,6 +132,9 @@
 <body>
 
 <h2 id="room-name">채팅방</h2>
+
+<!-- 채팅으로 돌아가기 버튼 -->
+<button class="return-button" onclick="goToChat()">목록으로 돌아가기</button>
 
 <div id="chat-box"></div>
 
@@ -213,6 +238,15 @@
       }
     };
   }
+
+  function goToChat() {
+    if (!roomId) {
+      alert("채팅방 ID가 없습니다!");
+      return;
+    }
+    window.location.href = `chat.html?roomId=${roomId}`;
+  }
+
 
   function sendMessage() {
     let message = document.getElementById("message").value;
